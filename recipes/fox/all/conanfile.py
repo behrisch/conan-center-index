@@ -59,12 +59,6 @@ class PackageConan(ConanFile):
         # See https://github.com/conan-io/conan-center-index/blob/master/docs/adding_packages/dependencies.md#version-ranges
         # self.requires("openssl/[>=1.1 <4]")
 
-    def validate(self):
-        # Always comment the reason including the upstream issue.
-        # INFO: Upstream only support Unix systems. See <URL>
-        if self.settings.os not in ["Linux", "FreeBSD", "Macos"]:
-            raise ConanInvalidConfiguration(f"{self.ref} is not supported on {self.settings.os}.")
-
     def source(self):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
         # apply patches listed in conandata.yml
@@ -111,11 +105,22 @@ class PackageConan(ConanFile):
         fix_apple_shared_install_name(self)
 
     def package_info(self):
-        self.cpp_info.libs = ["package_lib"]
+        self.cpp_info.libs = ["FOX-1.6"]              # libFOX-1.6.so / FOX-1.6.lib
+        self.cpp_info.includedirs = ["include/fox-1.6"]  # FOX installs headers here, not include/
 
-        # if the package provides a pkgconfig file (package.pc, usually installed in <prefix>/lib/pkgconfig/)
-        self.cpp_info.set_property("pkg_config_name", "package")
-
-        # If they are needed on Linux, m, pthread and dl are usually needed on FreeBSD too
         if self.settings.os in ["Linux", "FreeBSD"]:
-            self.cpp_info.system_libs.extend(["dl", "m", "pthread"])
+            self.cpp_info.system_libs = [
+                "X11", "Xext", "Xft", "Xcursor", "Xrandr", "Xrender",
+                "Xfixes", "Xi", "fontconfig", "freetype", "dl", "pthread", "rt",
+            ]
+            if self.options.get_safe("opengl"):
+                self.cpp_info.system_libs += ["GL", "GLU"]
+        elif self.settings.os == "Windows":
+            self.cpp_info.system_libs = [
+                "gdi32", "user32", "comctl32", "ws2_32", "winspool",
+                "mpr", "imm32", "shell32", "ole32", "uuid",
+            ]
+            if self.options.get_safe("opengl"):
+                self.cpp_info.system_libs += ["opengl32", "glu32"]
+        elif self.settings.os == "Macos":
+            self.cpp_info.frameworks = ["CoreFoundation", "Cocoa", "OpenGL"]
