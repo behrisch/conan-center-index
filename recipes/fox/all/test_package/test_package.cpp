@@ -1,5 +1,5 @@
 #include <cstdlib>
-#include "fox-1.6/fx.h"
+#include "fx.h"
 
 
 int main(void) {

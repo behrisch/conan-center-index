@@ -1,12 +1,11 @@
 from conan import ConanFile
-from conan.errors import ConanInvalidConfiguration
 from conan.tools.apple import fix_apple_shared_install_name
-from conan.tools.build import check_min_cppstd, cross_building
-from conan.tools.env import Environment, VirtualRunEnv
-from conan.tools.files import apply_conandata_patches, copy, export_conandata_patches, get, rm, rmdir
-from conan.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain, PkgConfigDeps
+from conan.tools.build import cross_building
+from conan.tools.env import VirtualRunEnv
+from conan.tools.files import apply_conandata_patches, copy, get, rm, rmdir
+from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
+from conan.tools.gnu import Autotools, AutotoolsDeps, AutotoolsToolchain
 from conan.tools.layout import basic_layout
-from conan.tools.microsoft import is_msvc, unix_path
 import os
 
 
@@ -26,7 +25,7 @@ class PackageConan(ConanFile):
     url = "https://github.com/conan-io/conan-center-index"
     homepage = "http://fox-toolkit.org"
     # no "conan" and project name in topics. Use topics from the upstream listed on GH
-    topics = ("GUI")
+    topics = ("GUI",)
     # package_type should usually be "library", "shared-library" or "static-library"
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
@@ -45,10 +44,15 @@ class PackageConan(ConanFile):
 
     # no exports_sources attribute, but export_sources(self) method instead
     def export_sources(self):
-        export_conandata_patches(self)
+        for dir in (".", "src", "utils"):
+            copy(self, "CMakeLists.txt", os.path.join(self.recipe_folder, "cmake", dir),
+                    os.path.join(self.export_sources_folder, dir))
 
     def layout(self):
-        basic_layout(self, src_folder="src")
+        if self.settings.os == "Windows":
+            cmake_layout(self)
+        else:
+            basic_layout(self, src_folder="src")
 
     def requirements(self):
         # Prefer self.requirements() method instead of self.requires attribute.
@@ -66,6 +70,10 @@ class PackageConan(ConanFile):
         apply_conandata_patches(self)
 
     def generate(self):
+        if self.settings.os == "Windows":
+            CMakeToolchain(self).generate()
+            CMakeDeps(self).generate()
+            return
         # inject required env vars into the build scope
         # it's required in case of native build when there is AutotoolsDeps & at least one dependency which might be shared, because configure tries to run a test executable
         if not cross_building(self):
@@ -86,12 +94,25 @@ class PackageConan(ConanFile):
         deps.generate()
 
     def build(self):
-        autotools = Autotools(self)
-        autotools.configure()
-        autotools.make()
+        if self.settings.os == "Windows":
+            for dir in (".", "src", "utils"):
+                copy(self, "CMakeLists.txt", os.path.join(self.export_sources_folder, dir),
+                     os.path.join(self.source_folder, dir))
+            cmake = CMake(self)
+            cmake.configure()
+            cmake.build()
+        else:
+            autotools = Autotools(self)
+            autotools.configure()
+            autotools.make()
 
     def package(self):
         copy(self, "LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        if self.settings.os == "Windows":
+            cmake = CMake(self)
+            cmake.install()
+            return
+
         autotools = Autotools(self)
         autotools.install()
 
