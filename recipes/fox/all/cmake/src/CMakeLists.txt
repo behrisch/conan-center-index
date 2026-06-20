@@ -1052,6 +1052,10 @@ endif()
 
 target_include_directories(fox PUBLIC ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(fox PRIVATE ${X11_LIBRARIES} ${LIBRARIES} ${CMAKE_THREAD_LIBS_INIT})
+if(MSVC)
+  target_link_libraries(fox PRIVATE
+    ws2_32 gdi32 user32 comctl32 winspool mpr imm32 shell32 ole32 uuid advapi32)
+endif()
 
 add_custom_command(
   OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/icons.cpp ${CMAKE_CURRENT_SOURCE_DIR}/icons.h
@@ -1064,8 +1068,10 @@ add_custom_command(
 
 set_target_properties(fox PROPERTIES VERSION ${fox-toolkit_VERSION} SOVERSION ${fox-toolkit_VERSION_PATCH})
 set_target_properties(fox PROPERTIES OUTPUT_NAME fox-${fox-toolkit_VERSION_MAJOR}.${fox-toolkit_VERSION_MINOR})
+set_target_properties(fox PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
 install(TARGETS fox
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         )
