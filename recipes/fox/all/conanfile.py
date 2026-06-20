@@ -14,12 +14,9 @@ required_conan_version = ">=2.0.9"
 class PackageConan(ConanFile):
     name = "fox"
     description = "FOX is a C++ based Toolkit for developing Graphical User Interfaces."
-    # Use short name only, conform to SPDX License List: https://spdx.org/licenses/
-    # In case not listed there, use "DocumentRef-<license-file-name>:LicenseRef-<package-name>"
     license = "LGPL-2.1-or-later"
     url = "https://github.com/conan-io/conan-center-index"
     homepage = "http://fox-toolkit.org"
-    # no "conan" and project name in topics. Use topics from the upstream listed on GH
     topics = ("GUI",)
     # package_type should usually be "library", "shared-library" or "static-library"
     package_type = "library"
@@ -28,11 +25,25 @@ class PackageConan(ConanFile):
         "shared": [True, False],
         "fPIC": [True, False],
         "with_jpeg": [True, False],
+        "with_png": [True, False],
+        "with_tiff": [True, False],
+        "with_zlib": [True, False],
+        "with_bz2": [True, False],
+        "with_webp": [True, False],
+        "with_jp2": [True, False],
+        "with_opengl": [True, False],
     }
     default_options = {
         "shared": False,
         "fPIC": True,
         "with_jpeg": True,
+        "with_png": True,
+        "with_tiff": True,
+        "with_zlib": True,
+        "with_bz2": True,
+        "with_webp": True,
+        "with_jp2": True,
+        "with_opengl": True,
     }
     # In case having config_options() or configure() method, the logic should be moved to the specific methods.
     implements = ["auto_shared_fpic"]
@@ -41,25 +52,44 @@ class PackageConan(ConanFile):
     def export_sources(self):
         for dir in (".", "src", "utils"):
             copy(self, "CMakeLists.txt", os.path.join(self.recipe_folder, "cmake", dir),
-                    os.path.join(self.export_sources_folder, dir))
+                 os.path.join(self.export_sources_folder, dir))
 
     def layout(self):
         cmake_layout(self)
 
     def requirements(self):
-        # Prefer self.requirements() method instead of self.requires attribute.
-        # self.requires("dependency/0.8.1")
         if self.options.with_jpeg:
             self.requires("libjpeg/9f")
-        # Some dependencies on CCI are allowed to use version ranges.
-        # See https://github.com/conan-io/conan-center-index/blob/master/docs/adding_packages/dependencies.md#version-ranges
-        # self.requires("openssl/[>=1.1 <4]")
+        if self.options.with_png:
+            self.requires("libpng/[>=1.6 <2]")
+        if self.options.with_tiff:
+            self.requires("libtiff/4.6.0")
+        if self.options.with_zlib:
+            self.requires("zlib/[>=1.2.11 <2]")
+        if self.options.with_bz2:
+            self.requires("bzip2/1.0.8")
+        if self.options.with_webp:
+            self.requires("libwebp/1.3.2")
+        if self.options.with_jp2:
+            self.requires("openjpeg/2.5.2")
+        if self.options.with_opengl:
+            self.requires("opengl/system")
+            self.requires("glu/system")
 
     def source(self):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
 
     def generate(self):
-        CMakeToolchain(self).generate()
+        tc = CMakeToolchain(self)
+        tc.cache_variables["WITH_JPEG"] = self.options.with_jpeg
+        tc.cache_variables["WITH_PNG"] = self.options.with_png
+        tc.cache_variables["WITH_TIFF"] = self.options.with_tiff
+        tc.cache_variables["WITH_ZLIB"] = self.options.with_zlib
+        tc.cache_variables["WITH_BZ2LIB"] = self.options.with_bz2
+        tc.cache_variables["WITH_WEBP"] = self.options.with_webp
+        tc.cache_variables["WITH_OPENJPEG"] = self.options.with_jp2
+        tc.cache_variables["WITH_OPENGL"] = self.options.with_opengl
+        tc.generate()
         CMakeDeps(self).generate()
 
     def build(self):
@@ -71,7 +101,7 @@ class PackageConan(ConanFile):
         cmake.build()
 
     def package(self):
-        copy(self, "LICENSE", self.source_folder, os.path.join(self.package_folder, "licenses"))
+        copy(self, "LICENSE*", self.source_folder, os.path.join(self.package_folder, "licenses"))
         cmake = CMake(self)
         cmake.install()
 
@@ -79,19 +109,21 @@ class PackageConan(ConanFile):
         self.cpp_info.libs = ["fox-1.6"]                 # libfox-1.6.so / fox-1.6.lib
         self.cpp_info.includedirs = ["include/fox-1.6"]  # FOX installs headers here, not include/
 
+        # TODO we should check whether the GL libs are already pulled in via the opengl recipe
         if self.settings.os in ["Linux", "FreeBSD"]:
             self.cpp_info.system_libs = [
                 "X11", "Xext", "Xft", "Xcursor", "Xrandr", "Xrender",
                 "Xfixes", "Xi", "fontconfig", "freetype", "dl", "pthread", "rt",
             ]
-            if self.options.get_safe("opengl"):
+            if self.options.get_safe("with_opengl"):
                 self.cpp_info.system_libs += ["GL", "GLU"]
         elif self.settings.os == "Windows":
             self.cpp_info.system_libs = [
                 "gdi32", "user32", "comctl32", "ws2_32", "winspool",
                 "mpr", "imm32", "shell32", "ole32", "uuid",
             ]
-            if self.options.get_safe("opengl"):
+            if self.options.get_safe("with_opengl"):
                 self.cpp_info.system_libs += ["opengl32", "glu32"]
         elif self.settings.os == "Macos":
-            self.cpp_info.frameworks = ["CoreFoundation", "Cocoa", "OpenGL"]
+            # the OpenGL framework is already activated via the opengl recipe
+            self.cpp_info.frameworks = ["CoreFoundation", "Cocoa"]
