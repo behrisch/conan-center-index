@@ -7,7 +7,7 @@ import os
 required_conan_version = ">=2.0.9"
 
 
-class PackageConan(ConanFile):
+class FoxConan(ConanFile):
     name = "fox"
     description = "FOX is a C++ based Toolkit for developing Graphical User Interfaces."
     license = "LGPL-2.1-or-later"
@@ -54,11 +54,11 @@ class PackageConan(ConanFile):
         if self.options.with_jpeg:
             self.requires("libjpeg/9f")
         if self.options.with_png:
-            self.requires("libpng/[>=1.6 <2]")
+            self.requires("libpng/1.6.58")
         if self.options.with_tiff:
             self.requires("libtiff/4.6.0")
         if self.options.with_zlib:
-            self.requires("zlib/[>=1.2.11 <2]")
+            self.requires("zlib/1.3.2")
         if self.options.with_bz2:
             self.requires("bzip2/1.0.8")
         if self.options.with_webp:
