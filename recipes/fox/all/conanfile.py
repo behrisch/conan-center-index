@@ -6,10 +6,6 @@ import os
 
 required_conan_version = ">=2.0.9"
 
-#
-# INFO: Please, remove all comments before pushing your PR!
-#
-
 
 class PackageConan(ConanFile):
     name = "fox"
@@ -18,7 +14,6 @@ class PackageConan(ConanFile):
     url = "https://github.com/conan-io/conan-center-index"
     homepage = "http://fox-toolkit.org"
     topics = ("GUI",)
-    # package_type should usually be "library", "shared-library" or "static-library"
     package_type = "library"
     settings = "os", "arch", "compiler", "build_type"
     options = {
@@ -45,10 +40,8 @@ class PackageConan(ConanFile):
         "with_jp2": True,
         "with_opengl": True,
     }
-    # In case having config_options() or configure() method, the logic should be moved to the specific methods.
     implements = ["auto_shared_fpic"]
 
-    # no exports_sources attribute, but export_sources(self) method instead
     def export_sources(self):
         for dir in (".", "src", "utils"):
             copy(self, "CMakeLists.txt", os.path.join(self.recipe_folder, "cmake", dir),
